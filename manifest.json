@@ -1,0 +1,30 @@
+{
+    "manifest_version": 3,
+    "name": "EpForm",
+    "version": "1.0",
+    "description": "Tool điền và randomize form tự động trên Google Forms và Microsoft Forms.",
+    "permissions": ["storage", "scripting"],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon.png",
+            "48": "icons/icon.png",
+            "128": "icons/icon.png"
+        }
+    },
+    
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["*://docs.google.com/*", "*://forms.office.com/*"],
+            "js": ["content.js"]
+        }
+    ],
+    "icons": {
+        "16": "icons/icon.png",
+        "48": "icons/icon.png",
+        "128": "icons/icon_128.png"
+    }
+}
