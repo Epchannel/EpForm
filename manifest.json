@@ -19,7 +19,8 @@
     "content_scripts": [
         {
             "matches": ["*://docs.google.com/*", "*://forms.office.com/*"],
-            "js": ["content.js"]
+            "js": ["content.js"],
+            "css": ["styles.css"]
         }
     ],
     "icons": {
