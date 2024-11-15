@@ -119,16 +119,67 @@ function injectRandomizer() {
     });
 }
 
+function randomizeAnswers() {
+    const randomDiv = document.querySelector("#borang-random-input-div");
+    removeAllRandomInputs(); // Xóa dữ liệu ngẫu nhiên cũ
+
+    const questionContainers = document.querySelectorAll("div[jsname='WsjYwc']");
+
+    questionContainers.forEach((question) => {
+        const questionId = question.getAttribute("data-params") || "default";
+        const options = question.querySelectorAll('[role="radio"], [role="checkbox"]');
+        const input = question.querySelector("input[type='text'], textarea");
+
+        if (options.length > 0) {
+            // Chọn một đáp án ngẫu nhiên
+            const randomOption = Array.from(options).sort(() => 0.5 - Math.random())[0];
+            randomOption.click(); // Tick vào đáp án ngẫu nhiên trên giao diện
+            createRandomInput(questionId, randomOption.getAttribute("aria-label") || "Option");
+        } else if (input) {
+            // Điền giá trị ngẫu nhiên vào ô văn bản
+            const randomText = "Random answer " + Math.floor(Math.random() * 1000);
+            input.value = randomText;
+            input.dispatchEvent(new Event("input")); // Gửi sự kiện để giao diện nhận diện
+            createRandomInput(questionId, randomText);
+        }
+    });
+
+    console.log("Answers randomized and marked as completed on UI.");
+}
+
+
+function injectRandomInputDiv() {
+    const randomDiv = document.createElement("div");
+    randomDiv.id = "borang-random-input-div";
+    randomDiv.style.display = "none";
+    document.documentElement.appendChild(randomDiv);
+}
+
+function createRandomInput(questionId, value) {
+    const randomDiv = document.querySelector("#borang-random-input-div");
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = questionId;
+    input.value = value;
+    randomDiv.appendChild(input);
+}
+
+function removeAllRandomInputs() {
+    const randomDiv = document.querySelector("#borang-random-input-div");
+    while (randomDiv.firstChild) {
+        randomDiv.removeChild(randomDiv.firstChild);
+    }
+}
+
+
 
 
 // Hàm thêm nút Randomize Page vào phía trên câu hỏi đầu tiên trên mỗi trang
 function addRandomizePageButton() {
-    const firstQuestionContainer = document.querySelector("div[jsmodel='CP1oW']"); // Chọn phần tử của câu hỏi đầu tiên
+    const firstQuestionContainer = document.querySelector("div[jsmodel='CP1oW']");
 
-    // Nếu không tìm thấy câu hỏi đầu tiên trên trang hiện tại thì dừng
     if (!firstQuestionContainer) return;
 
-    // Kiểm tra nếu nút Randomize Page chưa được thêm vào trang
     let existingRandomizePageButton = document.querySelector(".randomize-page-button");
     if (!existingRandomizePageButton) {
         const randomizePageButton = document.createElement("button");
@@ -137,50 +188,73 @@ function addRandomizePageButton() {
         randomizePageButton.className = "borang-button randomize-page-button";
         randomizePageButton.style.marginBottom = "10px";
 
-        // Sự kiện click để randomize toàn bộ câu hỏi trên trang
         randomizePageButton.onclick = () => {
             randomizePageButton.classList.toggle("randomize");
 
             if (randomizePageButton.classList.contains("randomize")) {
                 randomizePageButton.style.backgroundColor = "green";
-
-                // Gọi hàm randomize cho từng câu hỏi trên trang và làm mờ các nút randomize của từng câu hỏi
-                document.querySelectorAll(".custom-randomize-button").forEach(async (button) => {
-                    await randomizeQuestion(button.closest("div[jsmodel='CP1oW']")); // Ngẫu nhiên cho từng câu hỏi
-                    button.style.opacity = "0.5"; // Làm mờ nút randomize
-                    button.disabled = true; // Vô hiệu hóa nút randomize
-                });
+                console.log("Randomize Page enabled.");
             } else {
                 randomizePageButton.style.backgroundColor = "";
-                removeAllRandomInputs();
-
-                // Khôi phục trạng thái cho các nút Randomize của từng câu hỏi
-                document.querySelectorAll(".custom-randomize-button").forEach((button) => {
-                    button.style.opacity = "1"; // Khôi phục độ mờ
-                    button.disabled = false; // Bật lại nút randomize
-                });
+                console.log("Randomize Page disabled.");
             }
         };
 
-        // Thêm nút Randomize Page vào phía trên câu hỏi đầu tiên
         firstQuestionContainer.parentNode.insertBefore(randomizePageButton, firstQuestionContainer);
     }
 }
 
+
+
 // Gửi form nhiều lần theo yêu cầu
 async function submitForm(actionURL, times) {
-    const formData = new FormData(document.querySelector("form"));
     for (let i = 0; i < times; i++) {
         try {
+            randomizeAnswers(); // Ngẫu nhiên hóa và đánh dấu đáp án trên giao diện
+
+            const formData = new FormData(document.querySelector("form"));
+            const randomDiv = document.querySelector("#borang-random-input-div");
+
+            // Thêm dữ liệu ngẫu nhiên từ div ẩn vào formData
+            Array.from(randomDiv.querySelectorAll("input")).forEach((input) => {
+                formData.set(input.name, input.value);
+            });
+
             const response = await fetch(actionURL, { method: "POST", body: formData });
             console.log(`Form submitted: ${i + 1}/${times}`, response.status);
         } catch (error) {
             console.error("Submit error:", error);
         }
-        await wait(500); // Đợi 500ms giữa mỗi lần submit
+        await wait(500); // Đợi 500ms giữa mỗi lần gửi
     }
+
     alert(`Đã hoàn thành: ${times} lần.`);
 }
+
+
+
+
+function generateRandomAnswers() {
+    const randomAnswers = {};
+    const questionContainers = document.querySelectorAll("div[jsname='WsjYwc']");
+
+    questionContainers.forEach((question) => {
+        const questionId = question.getAttribute("data-params") || "default";
+        const options = question.querySelectorAll('[role="radio"], [role="checkbox"]');
+        const input = question.querySelector("input[type='text'], textarea");
+
+        if (options.length > 0) {
+            const randomOption = Array.from(options).sort(() => 0.5 - Math.random())[0];
+            randomAnswers[questionId] = randomOption.getAttribute("aria-label") || "Option";
+        } else if (input) {
+            randomAnswers[questionId] = "Random answer " + Math.floor(Math.random() * 1000);
+        }
+    });
+
+    return randomAnswers;
+}
+
+
 
 // Hàm thêm nút Submit và Randomize Page vào form Google
 async function injectGoogleForm() {
@@ -191,17 +265,12 @@ async function injectGoogleForm() {
     if (form && submitButtonContainer && submitButton) {
         console.log("Form and submit button container found for Google Forms");
 
-        // Tạo nút Submit mới
         const customButton = document.createElement("button");
         customButton.type = "button";
         customButton.textContent = "Submit";
         customButton.className = "custom-button";
         customButton.style.marginLeft = "8px";
 
-        // Thêm nút ngay sau nút Gửi gốc
-        submitButtonContainer.insertBefore(customButton, submitButton.nextSibling);
-
-        // Đặt sự kiện click cho nút Submit mới
         customButton.onclick = async () => {
             console.log("Custom Submit button clicked on Google Form");
             const count = +prompt("Bạn muốn gửi bao nhiều lần?");
@@ -209,12 +278,14 @@ async function injectGoogleForm() {
             await submitForm(form.action, count);
         };
 
-        // Thêm nút Randomize Page
-        addRandomizePageButton();
+        submitButtonContainer.insertBefore(customButton, submitButton.nextSibling);
+
+        addRandomizePageButton(); // Thêm nút Randomize Page
     } else {
         console.log("Submit button container or form not found on Google Forms");
     }
 }
+
 
 // Thay đổi nút Gửi gốc thành nút Submit của Extension
 async function replaceOriginalSubmitButton() {
@@ -300,6 +371,7 @@ initializeRandomizerSystem();
 
 // Khởi tạo các chức năng
 (async () => {
+    injectRandomInputDiv(); 
     await injectGoogleForm();
     injectRandomizer();
     injectRandomInputDiv();
