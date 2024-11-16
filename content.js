@@ -56,10 +56,9 @@ function removeAllRandomInputs() {
 
 // Hàm chọn ngẫu nhiên câu trả lời cho mỗi câu hỏi
 function randomizeQuestion(question) {
-    console.log("Randomizing question:", question);
-
     const questionId = question.getAttribute("data-params") || "default";
     const options = question.querySelectorAll('[role="radio"], [role="checkbox"]');
+    const input = question.querySelector("input[type='text'], textarea");
 
     if (options.length > 0) {
         const selectedOptions = [];
@@ -71,37 +70,33 @@ function randomizeQuestion(question) {
             selectedOptions.push(option.getAttribute("aria-label") || "Option");
         });
 
-        createRandomInput(questionId, selectedOptions.join(","));
-    } else {
-        const input = question.querySelector("input[type='text'], textarea");
-        if (input) {
-            const randomText = "Random answer " + Math.floor(Math.random() * 1000);
-            input.value = randomText;
-            input.dispatchEvent(new Event("input"));
-            createRandomInput(questionId, randomText);
-        }
+        saveRandomData(questionId, selectedOptions.join(",")); // Lưu vào Session Storage
+    } else if (input) {
+        const randomText = "Random answer " + Math.floor(Math.random() * 1000);
+        input.value = randomText;
+        input.dispatchEvent(new Event("input"));
+        saveRandomData(questionId, randomText); // Lưu vào Session Storage
     }
 }
 
+
 // Hàm thêm nút Randomize vào từng câu hỏi với hỗ trợ nhiều trang
 function injectRandomizer() {
-    const questionContainers = document.querySelectorAll("div[jsname='WsjYwc']"); // Chọn tất cả câu hỏi
+    restoreRandomData(); // Điền lại dữ liệu từ Session Storage
 
+    const questionContainers = document.querySelectorAll("div[jsname='WsjYwc']");
     questionContainers.forEach((question) => {
         const existingRandomizeButton = question.querySelector(".custom-randomize-button");
 
-        // Chỉ thêm nút Randomize nếu chưa có
         if (!existingRandomizeButton) {
             const randomizeButton = document.createElement("button");
             randomizeButton.type = "button";
             randomizeButton.textContent = "Randomize";
             randomizeButton.className = "custom-randomize-button";
 
-            // Thêm nút vào container tổng của câu hỏi
-            question.style.position = "relative"; // Đảm bảo container chính có thể chứa nút căn chỉnh
             randomizeButton.style.position = "absolute";
-            randomizeButton.style.top = "10px"; // Căn chỉnh vị trí theo chiều dọc
-            randomizeButton.style.right = "10px"; // Căn sát lề phải
+            randomizeButton.style.top = "10px";
+            randomizeButton.style.right = "10px";
             randomizeButton.style.padding = "5px 10px";
             randomizeButton.style.fontSize = "14px";
             randomizeButton.style.cursor = "pointer";
@@ -110,14 +105,13 @@ function injectRandomizer() {
             randomizeButton.style.border = "none";
             randomizeButton.style.borderRadius = "4px";
 
-            // Gán sự kiện click để randomize câu hỏi
             randomizeButton.onclick = () => randomizeQuestion(question);
 
-            // Thêm nút vào container của câu hỏi
             question.appendChild(randomizeButton);
         }
     });
 }
+
 
 function randomizeAnswers() {
     const randomDiv = document.querySelector("#borang-random-input-div");
@@ -189,16 +183,11 @@ function addRandomizePageButton() {
         randomizePageButton.style.marginBottom = "10px";
 
         randomizePageButton.onclick = () => {
-            randomizePageButton.classList.toggle("randomize");
-
-            if (randomizePageButton.classList.contains("randomize")) {
-                randomizePageButton.style.backgroundColor = "green";
-                console.log("Randomize Page enabled.");
-            } else {
-                randomizePageButton.style.backgroundColor = "";
-                console.log("Randomize Page disabled.");
-            }
+            const questionContainers = document.querySelectorAll("div[jsname='WsjYwc']");
+            questionContainers.forEach(randomizeQuestion); // Random hóa từng câu hỏi
+            alert("All answers on this page have been randomized and saved!");
         };
+        
 
         firstQuestionContainer.parentNode.insertBefore(randomizePageButton, firstQuestionContainer);
     }
@@ -359,6 +348,44 @@ function observePageChanges() {
     observer.observe(document, { childList: true, subtree: true });
 }
 
+
+// Hàm lưu dữ liệu ngẫu nhiên vào sessionStorage
+function saveRandomData(questionId, value) {
+    let randomData = JSON.parse(sessionStorage.getItem("randomData")) || {};
+    randomData[questionId] = value;
+    sessionStorage.setItem("randomData", JSON.stringify(randomData));
+}
+
+// Hàm khôi phục dữ liệu ngẫu nhiên từ sessionStorage
+function restoreRandomData() {
+    let randomData = JSON.parse(sessionStorage.getItem("randomData")) || {};
+    const questionContainers = document.querySelectorAll("div[jsname='WsjYwc']");
+
+    questionContainers.forEach((question) => {
+        const questionId = question.getAttribute("data-params") || "default";
+        const savedValue = randomData[questionId];
+        
+        if (savedValue) {
+            const options = question.querySelectorAll('[role="radio"], [role="checkbox"]');
+            const input = question.querySelector("input[type='text'], textarea");
+
+            if (options.length > 0) {
+                options.forEach((option) => {
+                    if (savedValue.includes(option.getAttribute("aria-label"))) {
+                        option.click(); // Chọn lại các đáp án đã lưu
+                    }
+                });
+            } else if (input) {
+                input.value = savedValue; // Điền lại giá trị văn bản đã lưu
+                input.dispatchEvent(new Event("input"));
+            }
+        }
+    });
+}
+
+
+
+
 // Khởi tạo hệ thống randomizer
 function initializeRandomizerSystem() {
     observePageChanges(); // Theo dõi thay đổi trang
@@ -376,5 +403,4 @@ initializeRandomizerSystem();
     injectRandomizer();
     injectRandomInputDiv();
 })();
-
 
